@@ -13,20 +13,24 @@ jobs:
     - name: Checkout Code
       uses: actions/checkout@v4
 
-    # ১. জাভা সেটআপের আগেই জিপ ফাইল আনজিপ করে নেওয়া হচ্ছে
+    # জিপ ফাইল আনজিপ এবং যেকোনো গভীরতা থেকে প্রজেক্ট ফাইল খোঁজার স্ক্রিপ্ট
     - name: Unzip Project File
       run: |
         unzip "*.zip" -d extracted_project
-        if [ -f extracted_project/gradlew ]; then
-          mv extracted_project/* . 2>/dev/null || true
-        elif [ -f extracted_project/*/gradlew ]; then
-          mv extracted_project/*/* . 2>/dev/null || true
-        elif [ -f extracted_project/*/*/gradlew ]; then
-          mv extracted_project/*/*/* . 2>/dev/null || true
+        # সম্পূর্ণ ডিরেক্টরি সার্চ করে gradlew ফাইলের লোকেশন খুঁজে বের করা হচ্ছে
+        GRADLEW_PATH=$(find extracted_project -name "gradlew" | head -n 1)
+        if [ -n "$GRADLEW_PATH" ]; then
+          PROJECT_ROOT=$(dirname "$GRADLEW_PATH")
+          echo "Project found in: $PROJECT_ROOT"
+          mv "$PROJECT_ROOT"/* . 2>/dev/null || true
+          # যদি কোনো লুকানো বা ডট ফাইল থাকে তাও মুভ করা হচ্ছে
+          mv "$PROJECT_ROOT"/.* . 2>/dev/null || true
+        else
+          echo "Error: gradlew file not found anywhere inside the zip!"
+          exit 1
         fi
         rm -rf extracted_project
 
-    # ২. এখানে ক্যাশ (cache) অপশনটি বাদ দিয়ে জাভা ২১ সেটআপ করা হয়েছে
     - name: Set up JDK 21
       uses: actions/setup-java@v4
       with:

@@ -1,0 +1,30 @@
+workflows:
+  android-native-build:
+    name: Android Native Kotlin Build
+    max_build_duration: 60
+    instance_type: mac_mini_m1
+    environment:
+      java: 21
+    triggering:
+      events:
+        - push
+      branch_patterns:
+        - pattern: main
+    scripts:
+      - name: Unzip Project File
+        script: |
+          unzip "*.zip" -d extracted_project
+          GRADLEW_PATH=$(find extracted_project -name "gradlew" | head -n 1)
+          if [ -n "$GRADLEW_PATH" ]; then
+            PROJECT_ROOT=$(dirname "$GRADLEW_PATH")
+            mv "$PROJECT_ROOT"/* . 2>/dev/null || true
+            mv "$PROJECT_ROOT"/.* . 2>/dev/null || true
+          fi
+          rm -rf extracted_project
+          chmod +x gradlew
+      - name: Build Android App (APK & AAB)
+        script: |
+          ./gradlew assembleRelease bundleRelease --no-daemon
+    artifacts:
+      - app/build/outputs/apk/release/*.apk
+      - app/build/outputs/bundle/release/*.aab

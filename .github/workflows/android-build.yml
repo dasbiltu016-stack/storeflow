@@ -13,19 +13,27 @@ jobs:
     - name: Checkout Code
       uses: actions/checkout@v4
 
-    # জিপ ফাইল আনজিপ করার স্টেপ
+    # জিপ ফাইল আনজিপ করার স্ক্রিপ্ট
     - name: Unzip Project File
       run: |
         unzip "*.zip" -d extracted_project
-        mv extracted_project/*/* . 2>/dev/null || mv extracted_project/* . || true
+        GRADLEW_PATH=$(find extracted_project -name "gradlew" | head -n 1)
+        if [ -n "$GRADLEW_PATH" ]; then
+          PROJECT_ROOT=$(dirname "$GRADLEW_PATH")
+          echo "Project found in: $PROJECT_ROOT"
+          mv "$PROJECT_ROOT"/* . 2>/dev/null || true
+          mv "$PROJECT_ROOT"/.* . 2>/dev/null || true
+        else
+          echo "Error: gradlew file not found!"
+          exit 1
+        fi
+        rm -rf extracted_project
 
-    # এখানে জাভা ২১ (Java 21) সেটআপ করা হয়েছে
     - name: Set up JDK 21
       uses: actions/setup-java@v4
       with:
         distribution: 'temurin'
         java-version: '21'
-        cache: 'gradle'
 
     - name: Grant Execute Permission for Gradle
       run: chmod +x gradlew
@@ -34,9 +42,11 @@ jobs:
       run: |
         echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > app/my-release-key.jks || echo "No keystore secret yet"
 
+    # মেমোরি অপ্টিমাইজেশন এবং ডেমোন বন্ধ করে বিল্ড করা
     - name: Build Release APK and AAB
-      run: ./gradlew assembleRelease bundleRelease
+      run: ./gradlew assembleRelease bundleRelease --no-daemon --stacktrace
       env:
+        GRADLE_OPTS: "-Xmx4096m -XX:MaxMetaspaceSize=1024m"
         ANDROID_KEYSTORE_FILE: my-release-key.jks
         ANDROID_KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
         ANDROID_KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
@@ -54,13 +64,13 @@ jobs:
         keyPassword: ${{ secrets.KEY_PASSWORD }}
 
     - name: Upload Signed APK
-      uses: actions/artifacts/upload-artifact@v4
+      uses: actions/upload-artifact@v4
       with:
         name: play-store-signed-apk
         path: ${{ steps.sign_app.outputs.signedReleaseFile }}
 
     - name: Upload Signed AAB (Play Store Bundle)
-      uses: actions/artifacts/upload-artifact@v4
+      uses: actions/upload-artifact@v4
       with:
         name: play-store-signed-aab
         path: app/build/outputs/bundle/release/app-release.aab

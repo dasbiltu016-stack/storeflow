@@ -13,11 +13,10 @@ jobs:
     - name: Checkout Code
       uses: actions/checkout@v4
 
-    # জিপ ফাইল আনজিপ এবং নিখুঁতভাবে ফাইল সাজানোর স্টেপ
+    # ১. জাভা সেটআপের আগেই জিপ ফাইল আনজিপ করে নেওয়া হচ্ছে
     - name: Unzip Project File
       run: |
         unzip "*.zip" -d extracted_project
-        # যদি জিপের ভেতরে কোনো এক্সট্রা ফোল্ডার থাকে, তবে তার ভেতরের ফাইলগুলো মেইন ডিরেক্টরিতে নিয়ে আসবে
         if [ -f extracted_project/gradlew ]; then
           mv extracted_project/* . 2>/dev/null || true
         elif [ -f extracted_project/*/gradlew ]; then
@@ -27,12 +26,12 @@ jobs:
         fi
         rm -rf extracted_project
 
+    # ২. এখানে ক্যাশ (cache) অপশনটি বাদ দিয়ে জাভা ২১ সেটআপ করা হয়েছে
     - name: Set up JDK 21
       uses: actions/setup-java@v4
       with:
         distribution: 'temurin'
         java-version: '21'
-        cache: 'gradle'
 
     - name: Grant Execute Permission for Gradle
       run: chmod +x gradlew

@@ -13,10 +13,19 @@ jobs:
     - name: Checkout Code
       uses: actions/checkout@v4
 
+    # জিপ ফাইল আনজিপ এবং নিখুঁতভাবে ফাইল সাজানোর স্টেপ
     - name: Unzip Project File
       run: |
         unzip "*.zip" -d extracted_project
-        mv extracted_project/*/* . 2>/dev/null || mv extracted_project/* . || true
+        # যদি জিপের ভেতরে কোনো এক্সট্রা ফোল্ডার থাকে, তবে তার ভেতরের ফাইলগুলো মেইন ডিরেক্টরিতে নিয়ে আসবে
+        if [ -f extracted_project/gradlew ]; then
+          mv extracted_project/* . 2>/dev/null || true
+        elif [ -f extracted_project/*/gradlew ]; then
+          mv extracted_project/*/* . 2>/dev/null || true
+        elif [ -f extracted_project/*/*/gradlew ]; then
+          mv extracted_project/*/*/* . 2>/dev/null || true
+        fi
+        rm -rf extracted_project
 
     - name: Set up JDK 21
       uses: actions/setup-java@v4
